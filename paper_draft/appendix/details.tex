@@ -1,0 +1,47 @@
+\section{Experimental Details}
+\label{app:details}
+
+\para{Data sources.} \sst and \agnews were loaded from the local Hugging Face cache. \rte and \mrpc were loaded from the \texttt{nyu-mll/glue} parquet files. Test sets are gold-balanced: 100/100 for binary tasks and 50 per class for \agnews.
+
+\para{Example prompt (\sst).}
+\begin{lstlisting}
+Classify the sentiment of each movie review as positive or negative.
+
+Review: <demo text>
+Sentiment: positive
+
+... (10 demonstrations) ...
+Review: <test text>
+Sentiment:
+\end{lstlisting}
+
+\para{Scoring.} We use vLLM 0.32 with \texttt{allowed\_token\_ids} set to the first token of each label word (with a leading space) and \texttt{logprobs\_mode="processed\_logprobs"}, so the returned log-probabilities are renormalised over the label set. Decoding is greedy with seed 0.
+
+\para{Seeds.} Demonstration sampling is seeded by an MD5 hash of (task, item, $T$, condition). The analysis RNG seed is 0.
+
+\para{Compute.} Each run used one slice of a shared NVIDIA RTX A6000 (48\,GB), with 5--44\,GB available depending on other users' jobs. The 14B run took 74 minutes; the 0.5B--1.5B runs took 2--4 minutes each. The total was about 6 GPU-hours, with no API cost.
+
+\para{Software.} vLLM 0.32.0, PyTorch 2.13, Transformers 5.19, pandas 3.0, matplotlib, Python 3.12.
+
+\para{Length-interaction results.} \Tabref{tab:lenint} lists the difference in \lengthc shift between long and short test inputs.
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        \textbf{Model} & \textbf{Short inputs} & \textbf{Long inputs} & \textbf{Long $-$ short [95\% CI]} \\
+        \midrule
+        Qwen2.5-0.5B      & $-$1.1 & +0.2 & +1.4 [$-$2.2, +4.2] \\
+        Qwen2.5-1.5B      & 0.0 & +0.7 & +0.7 [$-$2.0, +3.5] \\
+        Qwen2.5-3B        & +0.4 & $-$0.2 & $-$0.6 [$-$2.8, +2.3] \\
+        Qwen2.5-7B-AWQ    & +0.1 & +1.2 & +1.1 [$-$1.2, +2.9] \\
+        Qwen2.5-14B       & +0.6 & +0.7 & +0.2 [$-$1.8, +1.9] \\
+        Qwen2.5-1.5B-base & $-$0.1 & +1.6 & +1.7 [$-$0.5, +3.8] \\
+        Llama-3.2-1B      & $-$3.4 & $-$1.6 & +1.8 [$-$2.7, +5.6] \\
+        Llama-3.1-8B-AWQ  & $-$1.1 & +0.7 & +1.9 [$-$0.3, +4.7] \\
+        \bottomrule
+    \end{tabular}
+    \caption{\lengthc target shift (pp) for test inputs below and above the task median length. Every CI contains zero, so we find no evidence of a learned length-to-label rule.}
+    \label{tab:lenint}
+\end{table}

@@ -1,0 +1,25 @@
+\begin{table}[t]
+    \centering
+    \small
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Model} & \skewc (80/20) & \recency & \primacy & \lengthc \\
+        \midrule
+        \multicolumn{5}{@{}l}{\emph{\qwen ladder}} \\
+        Qwen2.5-0.5B      & \textbf{+4.3}\sig\ {\scriptsize[+2.7, +5.9]} & +1.8\pstar\ {\scriptsize[+0.2, +3.5]} & $-$3.1\sig\ {\scriptsize[$-$4.8, $-$1.5]} & $-$0.9\pstar\ {\scriptsize[$-$2.6, +0.7]} \\
+        Qwen2.5-1.5B      & \textbf{+4.9}\sig\ {\scriptsize[+3.4, +6.3]} & $-$1.2\pstar\ {\scriptsize[$-$2.5, $-$0.0]} & $-$2.5\sig\ {\scriptsize[$-$3.8, $-$1.3]} & +0.7\pstar\ {\scriptsize[$-$0.7, +2.0]} \\
+        Qwen2.5-3B        & +2.3\sig\ {\scriptsize[+1.1, +3.6]} & $-$3.6\sig\ {\scriptsize[$-$4.8, $-$2.4]} & \textbf{+3.8}\sig\ {\scriptsize[+2.7, +5.1]} & +0.2\pstar\ {\scriptsize[$-$1.0, +1.3]} \\
+        Qwen2.5-7B-AWQ    & \textbf{+1.3}\pstar\ {\scriptsize[+0.2, +2.5]} & $-$1.7\sig\ {\scriptsize[$-$2.8, $-$0.6]} & +1.0\pstar\ {\scriptsize[$-$0.1, +2.1]} & +0.6\pstar\ {\scriptsize[$-$0.4, +1.6]} \\
+        Qwen2.5-14B       & $-$0.6\pstar\ {\scriptsize[$-$1.7, +0.3]} & $-$2.1\sig\ {\scriptsize[$-$3.1, $-$1.1]} & \textbf{+1.5}\sig\ {\scriptsize[+0.6, +2.4]} & +0.7\pstar\ {\scriptsize[$-$0.2, +1.6]} \\
+        \midrule
+        \multicolumn{5}{@{}l}{\emph{Base model and second family}} \\
+        Qwen2.5-1.5B-base & \textbf{+8.9}\sig\ {\scriptsize[+7.6, +10.3]} & +1.6\pstar\ {\scriptsize[+0.5, +2.7]} & $-$0.3\pstar\ {\scriptsize[$-$1.5, +0.8]} & +0.5\pstar\ {\scriptsize[$-$0.5, +1.6]} \\
+        Llama-3.2-1B      & \textbf{+16.9}\sig\ {\scriptsize[+14.9, +19.0]} & $-$1.8\pstar\ {\scriptsize[$-$3.8, +0.4]} & +0.2\pstar\ {\scriptsize[$-$1.9, +2.3]} & $-$3.1\pstar\ {\scriptsize[$-$5.3, $-$1.1]} \\
+        Llama-3.1-8B-AWQ  & \textbf{+0.6}\pstar\ {\scriptsize[$-$0.8, +1.8]} & $-$2.7\sig\ {\scriptsize[$-$4.0, $-$1.3]} & +0.4\pstar\ {\scriptsize[$-$0.9, +1.7]} & $-$0.3\pstar\ {\scriptsize[$-$1.7, +1.0]} \\
+        \midrule
+        \emph{Hypothesised} & +15 to +25 & +8 to +15 & --- & +5 to +10 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Target shift $\shift$ (percentage points) toward the manipulated label, as an equal-weight mean over four tasks, with 95\% cluster-bootstrap CIs. \sig: Holm-adjusted $p<0.05$ over 32 tests. \textbf{Bold}: largest positive shift per model. Only \llamaone under \skewc reaches the hypothesised range. Recency is negative, not positive, for every model of 3B and above.}
+    \label{tab:shift}
+\end{table}

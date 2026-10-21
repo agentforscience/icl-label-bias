@@ -1,0 +1,45 @@
+\section{Method}
+\label{sec:method}
+
+Our main question is: {\bf when demonstrations carry a spurious statistic that favours a label $T$, how much more often does the model predict $T$?} We answer it with a paired design in which only the manipulated statistic differs between a biased prompt and its clean counterpart.
+
+\subsection{Hypotheses}
+\label{sec:hypotheses}
+We test five hypotheses, written down in our research plan before any model was run.
+\begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+    \item \textbf{H1.} Frequency skew causes the largest bias, a 15--25 point shift toward the majority label.
+    \item \textbf{H2.} Recency causes the second-largest bias, 8--15 points.
+    \item \textbf{H3.} Label--length correlation causes a moderate bias (5--10 points) that does not shrink with scale.
+    \item \textbf{H4.} Larger models (a) partly correct frequency skew but (b) amplify recency bias.
+    \item \textbf{H5.} Expected calibration error increases under every bias type.
+\end{itemize}
+
+\subsection{Tasks and Data}
+We use four classification tasks that differ in difficulty and label count. \sst~\citep{socher2013recursive} is binary sentiment (negative/positive). \rte and \mrpc come from GLUE~\citep{wang2018glue}: \rte is entailment (yes/no) and \mrpc is paraphrase detection (no/yes). \agnews~\citep{zhang2015character} is 4-way topic classification (World/Sports/Business/Technology). For each task we draw 200 gold-balanced test items from the validation split (test split for \agnews). Demonstrations come from the training split and are filtered by length (\sst: 5--60 words; \rte: $\le$80; \agnews: $\le$80; \mrpc: $\le$70). Demonstrations and test items therefore never overlap.
+
+\subsection{Demonstration Manipulations}
+Every prompt contains $k=10$ demonstrations followed by the test input. \Tabref{tab:conditions} lists the conditions. The \clean condition has balanced label counts in random order. \skewc uses 8 demonstrations labelled $T$ and 2 with other labels. \recency keeps the label counts balanced but places two $T$ demonstrations last. \primacy places them first. We read ``label-position correlation'' at the prompt level, so \primacy is the mirror image of \recency. \lengthc keeps the counts and order balanced but draws $T$ demonstrations from the longest third of $T$'s pool and the others from the shortest third.
+
+\para{Target rotation.} For every test item we build one prompt per possible target $T$, so each label is favoured equally often. A model with a fixed preference for, say, ``positive'' therefore shows no net shift toward $T$, and any shift we measure comes from the manipulation. With 200 items, 4 tasks, $|\mathcal{L}|\in\{2,4\}$ targets and 5 conditions, this gives 10,000 prompts. Each (task, item, $T$, condition) draws its own demonstrations, seeded by an MD5 hash of the tuple, so every model sees the same prompts. A supplementary set of 6,000 prompts measures dose--response: skew at 60\% and 100\%, and \recency with the last four demonstrations equal to $T$.
+
+\para{Prompt format.} Prompts are raw completion text without a chat template: a one-line instruction (\eg ``Classify the sentiment of each movie review as positive or negative.''), then ten \texttt{Review: \dots\ / Sentiment: \dots} pairs, then the test input followed by \texttt{Sentiment:}.
+
+\input{tables/conditions}
+
+\subsection{Models and Scoring}
+We evaluate \qwen~\citep{qwen2025qwen25} at 0.5B, 1.5B, 3B, 7B and 14B parameters; the Qwen2.5-1.5B base model, to isolate instruction tuning; and \llamaone-Instruct and \llamaeight-Instruct~\citep{grattafiori2024llama3}. All models run locally with vLLM~\citep{kwon2023efficient} in bf16 with greedy decoding. The GPUs were shared with other jobs, so the 7B and 8B models use 4-bit AWQ checkpoints~\citep{lin2024awq}.
+
+We score each prompt with the next-token distribution restricted to the first token of each label word (with a leading space), renormalised over the label set. The prediction is the argmax. This removes format and parsing failures, and it gives a probability vector $\vp\in\Delta^{|\mathcal{L}|}$ for the calibration metrics.
+
+\subsection{Metrics}
+\para{Target shift.} Our primary metric is the shift toward the target label,
+\begin{equation}
+    \shift(c) = \Pr[\hat y = T \mid c] - \Pr[\hat y = T \mid \clean],
+\end{equation}
+paired on (task, item, $T$) and reported in percentage points. We average over targets and items within a task, then weight the four tasks equally. Positive values mean the model follows the spurious statistic.
+
+\para{Secondary metrics.} We report accuracy, overall and split by whether the gold label equals $T$. We report ECE~\citep{guo2017calibration} with 10 equal-width bins on max-probability confidence, computed per task and averaged. We also report predictive entropy normalised by $\log|\mathcal{L}|$, and the mean probability mass on $T$.
+
+\para{Noise floor.} To judge whether a bias matters in practice, we compare it to the flip rate between predictions under two independently drawn \clean demonstration sets for the same item.
+
+\para{Statistics.} We compute 95\% confidence intervals (CIs) with a cluster bootstrap over test items, resampled within each task (2,000 resamples; 1,000 paired resamples for $\Delta$ECE). Significance comes from sign-flip permutation tests on per-item $\shift$, with Holm correction~\citep{holm1979simple} over all 32 (model $\times$ condition) tests. For scale trends we fit an OLS slope of $\shift$ on $\log_{10}$(parameters) along the \qwen ladder, with a bootstrap CI, and report Spearman's $\rho$ across the five sizes.

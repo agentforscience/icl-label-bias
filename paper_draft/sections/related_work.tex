@@ -1,0 +1,14 @@
+\section{Related Work}
+\label{sec:related}
+
+\para{Label biases in in-context learning.}
+\citet{zhao2021calibrate} identified three biases in GPT-3 few-shot classification: majority-label bias, recency bias and common-token bias. They proposed contextual calibration, which estimates the model's prior with a content-free input and divides it out. \citet{fei2023mitigating} added domain-label bias, where the task's text domain alone favours some labels, and corrected it with domain-context calibration. \citet{zhou2024batch} unified several of these methods as batch calibration. \citet{holtzman2021surface} showed that the probability of a label word is also affected by competition between surface forms. These works study older base models and mostly change one factor at a time. Building on their definitions, we measure four demonstration-level statistics side by side, with one protocol, on modern instruction-tuned models. We also test whether the biases that motivated calibration are still large enough to need it.
+
+\para{Sensitivity to demonstration choice and order.}
+\citet{lu2022fantastically} showed that permuting the same demonstrations can change accuracy dramatically. \citet{liu2022makes} showed that the choice of demonstrations matters and proposed retrieving similar ones. \citet{min2022rethinking} found that replacing gold labels with random labels hurts surprisingly little, which suggests that models use demonstrations mostly for format and label space. Unlike order-sensitivity studies, which report variance over permutations, we fix the label count and move a chosen label to the start or end. This separates directional recency and primacy effects from general instability. We also report the general instability itself, as the flip rate between two balanced demonstration sets, and use it as a noise floor.
+
+\para{Scale and in-context learning.}
+\citet{wei2023larger} found that larger models can override semantic priors when shown flipped labels, while smaller models cannot. This suggests that larger models pay closer attention to the demonstration labels. Our setting is different: the labels are correct, but their distribution or position is skewed. Here we find the opposite pattern for frequency skew, which larger models largely ignore. We study a dense five-point ladder within one model family, plus a base-versus-instruct pair, so that scale and instruction tuning are not confounded with model family.
+
+\para{Calibration of language models.}
+Expected calibration error (ECE)~\citep{guo2017calibration} is the standard measure of whether a classifier's confidence matches its accuracy. Few-shot calibration work~\citep{zhao2021calibrate,zhou2024batch} usually focuses on accuracy after recalibration. We instead ask whether each bias type changes ECE and predictive entropy, and we report both for every model and condition.

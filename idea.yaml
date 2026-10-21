@@ -1,0 +1,35 @@
+idea:
+  title: "In-Context Learning Label Bias: When Demonstrations Teach the Wrong Lesson"
+  description: >
+    In-context learning (ICL) can pick up spurious correlations from
+    few-shot demonstrations, such as label frequency imbalance or
+    positional patterns. This study isolates and quantifies four types
+    of label bias that few-shot demonstrations introduce, measuring
+    how each one distorts predictions independently of task knowledge.
+
+    We construct controlled demonstration sets for 4 NLU tasks
+    (sentiment, NLI, topic classification, paraphrase detection) with
+    5 bias manipulations: (1) label frequency skew (80/20 vs 50/50),
+    (2) recency bias (last 2 examples share a label), (3) label-length
+    correlation (positive examples are longer), (4) label-position
+    correlation (label always near sentence start), and (5) a clean
+    baseline. We test across 4 model sizes (0.5B to 14B) measuring
+    accuracy, calibration error, and prediction entropy.
+
+    Use locally runnable models via Ollama. Write a computational
+    paper under 3000 words with 2-3 figures.
+  hypothesis: >
+    Label frequency skew produces the largest bias (15-25% accuracy
+    shift toward the majority label), followed by recency bias (8-15%).
+    Label-length correlation has moderate effect (5-10%) and is harder
+    for models to overcome with scale. Larger models partially correct
+    frequency skew but amplify recency bias. Calibration error
+    increases monotonically with all bias types.
+  domain: artificial_intelligence
+  references:
+    - "Zhao et al. (2021) Calibrate Before Use: Improving Few-Shot Performance of Language Models"
+    - "Fei et al. (2023) Mitigating Label Biases for In-context Learning"
+  metadata:
+    idea_id: icl_label_bias_20261020_001001_e5f6g7h8
+    created_at: "2026-10-20T00:10:01.000000"
+    status: submitted

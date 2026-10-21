@@ -1,0 +1,24 @@
+\begin{table}[t]
+    \centering
+    \small
+    \begin{tabular}{@{}lccccc@{}}
+        \toprule
+        & \multicolumn{4}{c}{$\shift$ under \skewc (pp)} & \multirow{2}{*}{\shortstack{Flip rate (\%)\\ \mrpc/mean}} \\
+        \cmidrule(lr){2-5}
+        \textbf{Model} & \sst & \rte & \agnews & \mrpc & \\
+        \midrule
+        Qwen2.5-0.5B      & $-$1.2 & $-$3.2 & $-$0.1 & \textbf{+22.0} & 23.0 / 13.1 \\
+        Qwen2.5-1.5B      & $-$1.5 & 0.0 & +3.8 & \textbf{+17.2} & 23.5 / \phantom{0}9.4 \\
+        Qwen2.5-3B        & +3.0 & $-$0.5 & +1.8 & \textbf{+5.0} & 11.5 / \phantom{0}6.1 \\
+        Qwen2.5-7B-AWQ    & +1.0 & $-$1.8 & +0.9 & \textbf{+5.0} & \phantom{0}8.5 / \phantom{0}4.9 \\
+        Qwen2.5-14B       & 0.0 & $-$0.5 & \textbf{+0.8} & $-$2.8 & \phantom{0}9.0 / \phantom{0}4.2 \\
+        Qwen2.5-1.5B-base & $-$1.5 & +7.8 & +9.8 & \textbf{+19.8} & \phantom{0}6.0 / \phantom{0}6.2 \\
+        Llama-3.2-1B      & +3.8 & +22.2 & 0.0 & \textbf{+41.8} & 41.5 / 22.8 \\
+        Llama-3.1-8B-AWQ  & $-$0.8 & +2.5 & $-$5.1 & \textbf{+5.8} & 14.5 / \phantom{0}7.8 \\
+        \midrule
+        Clean acc.\ range (\%) & 89.8--95.5 & 64.2--92.5 & 69.6--85.5 & 54.5--77.0 & \\
+        \bottomrule
+    \end{tabular}
+    \caption{Skew bias by task, and the noise floor. \textbf{Bold}: task with the largest skew shift per model. \sst is essentially immune, while \mrpc, the task with the lowest clean accuracy, carries most of the bias. The last column is the share of predictions that flip when one balanced \clean demonstration set is replaced by another, on \mrpc and averaged over tasks.}
+    \label{tab:pertask}
+\end{table}

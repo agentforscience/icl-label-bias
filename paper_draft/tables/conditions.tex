@@ -1,0 +1,21 @@
+\begin{table}[t]
+    \centering
+    \small
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Condition} & \textbf{Label counts} & \textbf{Order} & \textbf{Lengths} \\
+        \midrule
+        \clean   & balanced (5/5; 3/3/2/2) & random & random \\
+        \skewc    & 8$\times T$, 2$\times$ other (80/20) & random & random \\
+        \recency & balanced & last 2 demos $=T$ & random \\
+        \primacy & balanced & first 2 demos $=T$ & random \\
+        \lengthc & balanced & random & $T$: longest third; others: shortest third \\
+        \midrule
+        \multicolumn{4}{@{}l}{\emph{Supplementary dose--response set}} \\
+        \textsc{skew60} / \textsc{skew100} & 6$\times T$ / 10$\times T$ & random & random \\
+        \textsc{recency4} & balanced$^{\dagger}$ & last 4 demos $=T$ & random \\
+        \bottomrule
+    \end{tabular}
+    \caption{Demonstration manipulations. Every prompt has $k=10$ demonstrations. The target label $T$ is rotated through every label, and each (task, item, $T$, condition) gets its own seeded demonstration sample. In \lengthc, $T$ demonstrations are 15--29 words longer on average than the others. $^{\dagger}$In 4-way \agnews, \textsc{recency4} raises $T$'s share to 40\%.}
+    \label{tab:conditions}
+\end{table}

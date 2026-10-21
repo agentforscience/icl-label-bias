@@ -1,0 +1,641 @@
+You are an academic paper writer. Generate a complete NEURIPS style paper
+based on the experiment results provided.
+
+════════════════════════════════════════════════════════════════════════════════
+                         IMPORTANT: BEFORE YOU START
+════════════════════════════════════════════════════════════════════════════════
+
+Before writing any content, you MUST complete these steps:
+
+1. READ THE SKILL: Review the paper-writer skill at .claude/skills/paper-writer/SKILL.md
+2. READ THE STYLE GUIDE: Study templates/paper_writing/lab_style_guide.md carefully
+3. REVIEW EXAMPLES: Browse paper_examples/ for formatting and language patterns:
+   - Look at sections/1.introduction.tex for language style
+   - Look at tables/*.tex for table formatting
+   - Look at commands/*.tex for macro usage
+4. VERIFY COMMAND TEMPLATES: Command templates (math.tex, general.tex, macros.tex) are pre-copied to paper_draft/commands/
+
+CRITICAL: Reference example papers for FORMATTING and LANGUAGE STYLE only.
+Do NOT copy content, phrasing, or narrative structure from the example papers.
+The examples are in a different research domain - focus only on presentation style.
+
+════════════════════════════════════════════════════════════════════════════════
+                            EXPERIMENT REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+# In-Context Learning Label Bias: When Demonstrations Teach the Wrong Lesson
+
+## 1. Executive Summary
+
+**Question.** When few-shot demonstrations carry a spurious statistic, how far do LLM predictions move toward the label that statistic favours? We test four such statistics: label frequency skew, recency, label position (primacy), and label-length correlation. We also ask whether the effect changes with model scale.
+
+**Answer.** In modern instruction-tuned models (Qwen2.5-Instruct 0.5B–14B; Llama-3.2-1B and Llama-3.1-8B), every one of these biases is much smaller than hypothesised. Across 80,000 scored prompts (8 models × 10,000):
+
+- **Frequency skew (80/20)** is the largest bias in small models: +4 to +5 pp for small Qwen-Instruct, +8.9 pp for a 1.5B *base* model, and +16.9 pp for Llama-3.2-1B. It shrinks with scale to roughly zero at 14B (−0.6 pp) and 8B (+0.6 pp).
+- **Recency** (last two demos share a label) does not produce the predicted 8–15 pp pull. From 3B upward it produces a small but significant *anti*-recency effect: −1.7 to −3.6 pp, Holm-corrected p < 0.05.
+- **Label-length correlation** has no reliable effect at any size (|Δ| ≤ 3 pp; no model shows a length → label rule).
+- **Calibration error (ECE)** does not increase reliably under any bias. Only 1 of 32 ΔECE bootstrap CIs excludes zero, and only barely and before multiplicity correction.
+
+Shifts large enough to match the hypothesis appear only with extreme manipulations, mostly on the most ambiguous task (MRPC). Examples: 100% single-label demos give +16 to +36 pp in ≤1.5B models (but only +3.2 pp in Qwen-7B), and skew on MRPC gives +17 to +42 pp.
+
+**Practical implication.** For current instruction-tuned models at ≥3B, the *specific* labels in a balanced-looking demo set matter less than ordinary demo-to-demo variance. Swapping one balanced demo set for another flips 4–23% of predictions, which is larger than any systematic bias we measured in ≥3B models. Practitioners should worry about ambiguous tasks and very small models, where skew still matters, and should average over demo sets rather than tune label order.
+
+## 2. Research Question & Hypothesis
+
+The hypothesis under test has five parts:
+
+- **H1.** Frequency skew gives the largest bias: a 15–25 pp shift toward the majority label.
+- **H2.** Recency gives the second largest: 8–15 pp.
+- **H3.** Label-length correlation gives a moderate bias (5–10 pp) that is hard to overcome with scale.
+- **H4.** Larger models partially correct frequency skew but amplify recency bias.
+- **H5.** Calibration error increases monotonically with all bias types.
+
+**Motivation / gap.** Zhao et al. (2021, *Calibrate Before Use*) documented majority-label and recency bias in GPT-3-era base models. Fei et al. (2023) added domain-label bias. Lu et al. (2022) showed that demonstration order matters. Those studies mostly varied one factor on older base models. Here all four manipulations are measured with one paired protocol, across a dense scale ladder of a modern instruction-tuned family plus a second family, and calibration is reported for each bias type. (Note: the resource-finder stage did not run for this workspace, so there was no `literature_review.md`, papers or code. The background above comes from known literature, not from downloaded PDFs.)
+
+## 3. Experimental Setup
+
+### Tasks and data
+| Task | Type | Labels (verbalisers) | Test items | Demo pool |
+|---|---|---|---|---|
+| SST-2 | sentiment | negative / positive | 200 from validation (100/100) | train, 5–60 words |
+| RTE | NLI | yes (entail) / no | 200 from validation (100/100) | train, ≤80 words |
+| AG News | topic, 4-way | World / Sports / Business / Technology | 200 from test (50 each) | train, ≤80 words |
+| MRPC | paraphrase | no / yes | 200 from validation (100/100) | train, ≤70 words |
+
+SST-2 and AG News come from the local HF cache. RTE and MRPC come from `nyu-mll/glue` parquet files (`datasets/raw/`). Demos come from train and test items from validation/test, so the two never overlap.
+
+### Manipulations
+Every prompt has k = 10 demonstrations. The *target label* T is rotated through every label, so a model's intrinsic label preference cancels out.
+
+| Condition | Label counts | Order | Lengths |
+|---|---|---|---|
+| clean | balanced (5/5; 3/3/2/2 for AG News) | random | random |
+| skew | 8 × T, 2 × other (80/20) | random | random |
+| recency | balanced | last 2 demos = T | random |
+| primacy (label-position) | balanced | first 2 demos = T | random |
+| length | balanced | random | T demos from the longest third of T's pool, others from the shortest third (mean +15 to +29 words for T) |
+
+"Label-position correlation (label always near sentence start)" was interpreted as *prompt-level* position (T demos placed first, i.e. primacy). That makes it the mirror image of recency.
+
+Each (task, item, T, condition) gets its own seeded demo sample. This gives 10,000 prompts, and every model sees exactly the same prompts.
+
+**Supplementary dose-response set** (`prompts_supp.jsonl`, 6,000 prompts): skew at 60% and 100%, and recency with the last 4 demos = T. In AG News, recency4 necessarily raises T's share to 40%.
+
+Prompt format (raw completion, no chat template), shown for SST-2:
+```
+Classify the sentiment of each movie review as positive or negative.
+
+Review: <demo text>
+Sentiment: positive
+
+... (10 demos) ...
+Review: <test text>
+Sentiment:
+```
+
+### Models
+All models run locally with vLLM 0.32 (bf16 unless noted), greedy decoding, on a single shared RTX A6000 (48 GB) slice per run:
+
+- Qwen2.5-Instruct: 0.5B, 1.5B, 3B, **7B-AWQ** (4-bit), 14B
+- Qwen2.5-1.5B **base** (to test the effect of instruction tuning)
+- Llama-3.2-1B-Instruct
+- Llama-3.1-8B-Instruct-AWQ-INT4
+
+The 7B and 8B models had to use 4-bit AWQ checkpoints because other users' jobs left ≤17 GB free on the shared GPUs. No API keys were available on this host, and the task asked for local models. vLLM was used instead of Ollama because it exposes exact label log-probabilities.
+
+**Scoring.** Each prompt is scored by the next-token distribution restricted to the first token of each label word (with leading space), renormalised over the label set (`allowed_token_ids` + `logprobs_mode="processed_logprobs"`). The prediction is the argmax. This removes format and parsing failures and yields probabilities for calibration.
+
+### Metrics
+- **Target shift Δ** (primary): P(pred = T | condition) − P(pred = T | clean), paired on (task, item, T), in percentage points. It is averaged over T and items, then over the 4 tasks with equal weight.
+- Accuracy and Δaccuracy, both overall and split by whether gold = T.
+- **ECE**: 10 equal-width bins on max-probability confidence, computed per task and then averaged.
+- Normalised predictive entropy.
+- Mean probability mass on T (a soft version of Δ).
+- **Noise floor**: the flip rate between two independent clean demo sets for the same item.
+
+### Statistics
+- 95% CIs come from a cluster bootstrap over test items, resampled within each task (2,000 resamples; 1,000 for ΔECE, paired).
+- Significance uses sign-flip permutation tests on per-item Δ, Holm-corrected over all 32 (model × condition) tests.
+- Scale trend: OLS slope of Δ on log10(params) along the Qwen-Instruct ladder, plus Spearman ρ across the 5 sizes.
+
+Seeds: demo sampling is seeded by an md5 hash of (task, item, T, condition); vLLM seed = 0; analysis RNG seed = 0.
+
+## 4. Results
+
+### 4.1 Target shift by bias type (Figure 1)
+
+Δ is in pp. Brackets give the 95% CI; * marks Holm-adjusted p < 0.05.
+
+| Model | skew (80/20) | recency | primacy | length |
+|:--|:--|:--|:--|:--|
+| Qwen2.5-0.5B | **+4.3** [+2.7,+5.9]* | +1.8 [+0.2,+3.5] | −3.1 [−4.8,−1.5]* | −0.9 [−2.6,+0.7] |
+| Qwen2.5-1.5B | **+4.9** [+3.4,+6.3]* | −1.2 [−2.5,−0.0] | −2.5 [−3.8,−1.3]* | +0.7 [−0.7,+2.0] |
+| Qwen2.5-3B | +2.3 [+1.1,+3.6]* | −3.6 [−4.8,−2.4]* | **+3.8** [+2.7,+5.1]* | +0.2 [−1.0,+1.3] |
+| Qwen2.5-7B-AWQ | +1.3 [+0.2,+2.5] | −1.7 [−2.8,−0.6]* | +1.0 [−0.1,+2.1] | +0.6 [−0.4,+1.6] |
+| Qwen2.5-14B | −0.6 [−1.7,+0.3] | −2.1 [−3.1,−1.1]* | +1.5 [+0.6,+2.4]* | +0.7 [−0.2,+1.6] |
+| Qwen2.5-1.5B-base | **+8.9** [+7.6,+10.3]* | +1.6 [+0.5,+2.7] | −0.3 [−1.5,+0.8] | +0.5 [−0.5,+1.6] |
+| Llama-3.2-1B | **+16.9** [+14.9,+19.0]* | −1.8 [−3.8,+0.4] | +0.2 [−1.9,+2.3] | −3.1 [−5.3,−1.1] |
+| Llama-3.1-8B-AWQ | +0.6 [−0.8,+1.8] | −2.7 [−4.0,−1.3]* | +0.4 [−0.9,+1.7] | −0.3 [−1.7,+1.0] |
+
+![Figure 1](figures/fig1_target_shift.png)
+
+*Figure 1. Shift toward the manipulated label, as a 4-task mean with 95% bootstrap CIs. Shaded bands mark the hypothesised ranges. Only Llama-3.2-1B under skew reaches the 15–25 pp band.*
+
+**Skew effects are concentrated in the ambiguous tasks.** Per-task skew Δ in pp (from `results/target_shift.csv`):
+
+| Model | SST-2 | RTE | AG News | MRPC |
+|---|---|---|---|---|
+| Qwen2.5-0.5B | −1.2 | −3.2 | −0.1 | +22.0 |
+| Qwen2.5-1.5B | −1.5 | 0.0 | +3.8 | +17.2 |
+| Qwen2.5-3B | +3.0 | −0.5 | +1.8 | +5.0 |
+| Qwen2.5-7B-AWQ | +1.0 | −1.8 | +0.9 | +5.0 |
+| Qwen2.5-14B | 0.0 | −0.5 | +0.8 | −2.8 |
+| Qwen2.5-1.5B-base | −1.5 | +7.8 | +9.8 | +19.8 |
+| Llama-3.2-1B | +3.8 | +22.2 | 0.0 | +41.8 |
+| Llama-3.1-8B-AWQ | −0.8 | +2.5 | −5.1 | +5.8 |
+
+SST-2 is essentially immune to skew in every model. MRPC, the task where models are least certain (clean accuracy is lowest and the flip rate is highest), carries most of the skew bias.
+
+**Where skew hurts.** Accuracy under skew, split by whether gold = T:
+
+| Model | gold ≠ T: clean → skew | gold = T: clean → skew |
+|---|---|---|
+| Llama-3.2-1B | 73.3 → **58.8** | 72.0 → 86.2 |
+| Qwen2.5-1.5B-base | 79.8 → 70.1 | 79.2 → 88.4 |
+| Qwen2.5-1.5B | 80.5 → 74.2 | 82.1 → 84.2 |
+| Qwen2.5-14B | 87.2 → 87.7 | 87.1 → 86.9 |
+
+For minority-class items in the most-affected model, skew costs 14.5 pp of accuracy. Because T is rotated, these gains and losses cancel in overall accuracy, which changes by at most 2.8 pp (Figure 3, right).
+
+### 4.2 Scale (Figure 2)
+
+![Figure 2](figures/fig2_scale.png)
+
+*Figure 2. Δ against parameter count for the Qwen2.5-Instruct ladder: 4-task mean with CI band, then each task.*
+
+OLS slope of Δ per 10× parameters, Qwen-Instruct ladder (n = 5 sizes; the CI covers item-sampling noise only):
+
+| Bias | Slope (pp / decade) | 95% CI | Spearman ρ |
+|---|---|---|---|
+| skew | −3.7 | [−4.8, −2.4] | −0.9 |
+| recency | −2.4 | [−3.6, −1.2] | −0.7 |
+| primacy | +3.6 | [+2.4, +4.7] | +0.7 |
+| length | +1.0 | [−0.2, +2.2] | +0.7 |
+
+The Llama pair agrees for skew: 1B gives +16.9 and 8B gives +0.6. It also agrees for recency: 1B gives −1.8 (n.s.) and 8B gives −2.7*.
+
+### 4.3 Dose-response (supplementary; Figure 4)
+
+Δ in pp, 4-task mean, 95% CI:
+
+| Model | skew 60% | skew 80% | skew 100% | recency last-2 | recency last-4 |
+|---|---|---|---|---|---|
+| Qwen2.5-0.5B | +0.5 [−1.2,2.0] | +4.3 | +16.9 [15.4,18.5] | +1.8 | +5.7 [4.2,7.3] |
+| Qwen2.5-1.5B | +1.8 [0.5,3.2] | +4.9 | +15.6 [14.0,17.2] | −1.2 | +3.5 [2.0,5.0] |
+| Qwen2.5-1.5B-base | +2.6 [1.5,3.8] | +8.9 | +29.5 [28.0,31.0] | +1.6 | +4.2 [3.0,5.4] |
+| Llama-3.2-1B | +5.8 [3.7,7.9] | +16.9 | +36.0 [34.1,38.0] | −1.8 | +10.7 [8.5,12.7] |
+| Qwen2.5-7B-AWQ | +0.3 [−0.7,1.4] | +1.3 | **+3.2** [2.0,4.5] | −1.7 | **−1.9** [−3.0,−0.8] |
+
+(`results/dose_response.csv`.)
+
+![Figure 4](figures/fig4_dose_response.png)
+
+Skew bias rises steeply and non-linearly with the share of majority labels. Most of the effect appears only when the minority label is (nearly) absent from the context. A recency run of 4 identical final labels produces a positive recency effect in small models even where a run of 2 does not. **Qwen2.5-7B is almost immune even to the extreme doses.** All-T demonstrations move it by only +3.2 pp, and four final T demos still produce anti-recency (−1.9 pp). Scale therefore removes not just the moderate biases but most of the dose-response.
+
+### 4.4 Calibration, entropy, accuracy (Figure 3)
+
+ECE (equal-task mean):
+
+| Model | clean | skew | recency | primacy | length |
+|---|---|---|---|---|---|
+| Qwen2.5-0.5B | .071 | .062 | .058 | .072 | .062 |
+| Qwen2.5-1.5B | .049 | .070 | .048 | .060 | .041 |
+| Qwen2.5-3B | .121 | .127 | .124 | .123 | .114 |
+| Qwen2.5-7B-AWQ | .111 | .118 | .121 | .123 | .117 |
+| Qwen2.5-14B | .097 | .092 | .101 | .097 | .089 |
+| Qwen2.5-1.5B-base | .058 | .067 | .062 | .061 | .063 |
+| Llama-3.2-1B | .035 | .051 | .053 | .033 | .045 |
+| Llama-3.1-8B-AWQ | .053 | .055 | .056 | .058 | .055 |
+
+- ΔECE vs clean (`results/calibration_delta.csv`) ranges from −1.3 to +2.2 pp. **Only 1 of 32 CIs excludes zero**: 7B primacy, +1.2 [+0.02, +2.3], uncorrected for 32 comparisons. The largest point estimate, Qwen-1.5B skew (+2.2 [−0.05, 3.3]), does not. 9 of 32 point estimates are negative.
+- Normalised entropy hardly moves (e.g. 14B: 0.099 clean vs 0.102 skew).
+- Larger Qwen models are markedly *over*confident even on clean prompts (ECE ≈ 0.10–0.12 at 3–14B vs 0.05–0.07 at 0.5–1.5B). This is a property of the model, not of the bias.
+
+![Figure 3](figures/fig3_calibration_accuracy.png)
+
+### 4.5 Length interaction and noise floor
+
+- **Length.** If the length manipulation taught a "long → T" rule, Δ would be larger for long test inputs (above the task median) than for short ones. The long-minus-short difference ranges from −0.6 to +1.9 pp, and every 95% CI includes 0 (`results/length_interaction.csv`). There is no evidence of a learned length → label rule.
+- **Noise floor.** Re-drawing a *balanced* demo set flips 4.2% (Qwen-14B) to 22.8% (Llama-1B) of predictions; MRPC reaches 41.5% for Llama-1B. For every model ≥3B, this ordinary resampling instability is larger than any systematic bias in Table 4.1.
+
+## 5. Analysis & Discussion
+
+### Verdicts on the hypothesis
+| Part | Prediction | Result | Verdict |
+|---|---|---|---|
+| H1 | skew is largest, 15–25 pp | Largest bias in every model ≤1.5B (4.3–16.9 pp), but only Llama-3.2-1B is in range. ≈0 at 8–14B. | **Partly supported**: largest in small models, magnitude far too high for instruct models |
+| H2 | recency second, 8–15 pp | ≤ +1.8 pp; significantly *negative* (−1.7 to −3.6) at ≥3B | **Refuted** |
+| H3 | length 5–10 pp, scale-resistant | \|Δ\| ≤ 3.1, mostly n.s., no length rule | **Refuted** (no meaningful effect at any scale) |
+| H4a | scale corrects skew | slope −3.7 pp/decade; Llama 16.9 → 0.6 | **Supported** |
+| H4b | scale amplifies recency | Recency does not grow in the predicted direction; it flips to a small anti-recency effect | **Refuted** as stated (magnitude grows slightly, but with the opposite sign) |
+| H5 | ECE rises monotonically with every bias | ΔECE ≈ 0 (1/32 CIs barely > 0, uncorrected); 9/32 negative | **Refuted** |
+
+### Interpretation
+1. **Instruction tuning and scale largely remove majority-label bias for ordinary demo sets.** The base 1.5B model is about twice as skew-sensitive as its instruct sibling (8.9 vs 4.9 pp). Its 100%-skew effect is also roughly double (29.5 vs 15.6 pp). The larger numbers in the classic literature come from GPT-3-era base models; that is consistent with our base-vs-instruct gap, but our study cannot separate model era from training recipe. Modern instruct models seem to rely mostly on the instruction and the test input, and use the demo label distribution as a weak prior.
+2. **Bias lives where the model is uncertain.** On SST-2, where clean accuracy is ≥ 90% for most models, no manipulation moves predictions. On MRPC, the task with the lowest accuracy and highest flip rate, skew moves small models by 17–42 pp. A plausible mechanism is that demo statistics act as a prior that only wins when the evidence (the input) is weak. That explains why the effect shrinks as models get more competent.
+3. **Anti-recency at scale.** For ≥3B models, two final demos of label T make the model *less* likely to predict T (−2 to −4 pp; up to −10.5 pp on MRPC for Qwen-3B). Primacy shows the mirror image (+1 to +4 pp at 3B and 14B). Two explanations are possible:
+   - The model expects labels to alternate (a gambler's-fallacy-like prior learned from balanced data).
+   - A design side effect: with balanced counts, putting two T demos at the end makes the middle positions slightly T-poor (only 38% of first-two slots are T).
+
+   With four final T demos the effect becomes positive again in small models but stays negative in Qwen-7B. The "recency bias" of the hypothesis therefore appears only once the run is long or the model is small.
+4. **Length is not used as a label cue.** The length manipulation separated T and non-T demos by 15–29 words on average, yet no model picked up a length → label association. That held both overall and on long test inputs.
+5. **Calibration is robust to these manipulations.** The biases are small, so the probability distributions barely change. ECE differences between models (overconfident larger Qwen models) dwarf the differences between conditions.
+
+### Comparison to the literature
+- Zhao et al. (2021) report large majority-label and recency effects for GPT-3. Our small and base models reproduce the direction for skew. At the extreme dose (100% one label), the magnitudes are comparable: +16 to +36 pp.
+- Recency, however, did not replicate at the k = 10, two-final-demo strength. Recency appears only in small models and only with longer runs (recency4: +3.5 to +10.7 pp).
+
+### Surprises
+- Anti-recency and primacy in mid and large models.
+- The SST-2 null.
+- The 3B Qwen model shows several of the largest order effects (recency −3.6, primacy +3.8), so the scale curves for order effects are non-monotone.
+
+## 6. Limitations
+- **Model coverage.** There is one dense ladder (Qwen2.5-Instruct) plus two Llama points. The 7B and 8B points are 4-bit AWQ, so quantisation is confounded with size at those points. The largest model is 14B, so we do not know whether the trends continue to 70B+.
+- **Scale statistics.** Slope CIs reflect item-sampling noise only. With 5 sizes, the evidence about model-to-model variation is weak (Spearman ρ with n = 5).
+- **Interpretation choices.** "Label-position correlation" was implemented as prompt-level primacy. Recency and primacy conditions slightly unbalance the label mix in the middle positions. In AG News, recency4 also raises T's frequency to 40%.
+- **Prompt format.** We used a single prompt template (raw completion, no chat template) with k = 10. Chat-formatted prompts or other k values may behave differently. Label verbalisers are fixed.
+- **Sample size.** 200 test items per task. CIs are roughly ±1–2 pp on the 4-task mean, so effects below ~2 pp are hard to resolve.
+- **Contamination.** SST-2, RTE, MRPC and AG News are public and likely in pretraining data. This would make models *less* reliant on demos and could deflate bias estimates relative to novel tasks.
+- **Supplementary coverage.** The dose-response set was run on 5 models (Qwen 0.5B/1.5B/1.5B-base/7B-AWQ and Llama-1B), not on 3B, 14B or Llama-8B, because of GPU time.
+
+## 7. Conclusions & Next Steps
+Spurious statistics in few-shot demonstrations do bias modern LLMs, but far less than the hypothesis predicted:
+
+- Frequency skew is the only consistently harmful bias. It matters mainly for small, base or weak models and for ambiguous tasks, and it fades with scale.
+- Recency, label-position and length correlations produce effects of ≤4 pp. These are smaller than the 4–23% prediction churn from simply re-drawing a balanced demo set, and they include an unexpected anti-recency pattern at ≥3B.
+- Calibration is essentially unaffected.
+
+**Follow-ups:**
+1. Extend to 32B–70B models and chat-formatted prompts.
+2. Use novel or synthetic tasks (e.g. with randomised label words) to remove prior knowledge and contamination.
+3. Vary the recency run length and the label-alternation structure to test the alternation-expectation explanation.
+4. Test whether contextual calibration (Zhao et al.) or domain-context calibration (Fei et al.) still helps when the biases are this small.
+
+## References
+- Zhao, Wallace, Feng, Klein, Singh (2021). *Calibrate Before Use: Improving Few-Shot Performance of Language Models.* ICML.
+- Fei, Hou, Chen, Bosselut (2023). *Mitigating Label Biases for In-context Learning.* ACL.
+- Lu et al. (2022). *Fantastically Ordered Prompts and Where to Find Them.* ACL.
+- Min et al. (2022). *Rethinking the Role of Demonstrations.* EMNLP.
+- Datasets: SST-2 (Socher et al., 2013), RTE and MRPC via GLUE (Wang et al., 2018), AG News (Zhang et al., 2015).
+- Models: Qwen2.5 (Qwen Team, 2024), Llama 3.1 / 3.2 (Meta, 2024).
+- Tools: vLLM 0.32.0, PyTorch 2.13, Transformers 5.19, pandas 3.0, matplotlib; Python 3.12.
+
+## Appendix: Reproduction and outputs
+- `src/build_prompts.py` → `datasets/prompts/prompts.jsonl`. Running `python src/build_prompts.py supp` builds the dose-response set.
+- `src/run_model.py <hf_id> <tag> [gpu_gb]` → `results/raw/<tag>.jsonl` (label probability vector per prompt). With `PROMPTS=prompts_supp` it writes the supplementary set instead. `src/gpu_run_v2.sh` waits for free GPU memory and retries.
+- `cd src && python analyze.py && python analyze_supp.py` produces:
+  - `results/*.csv`
+  - `figures/fig1–4`
+  - the printed log in `results/analysis_output.txt`
+- Compute: 1× RTX A6000 slice per run (5–44 GB, shared with other users). The 14B run took 74 min; 0.5–1.5B runs took ~2–4 min each. Total ≈ 6 GPU-hours. No API cost.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            RESEARCH PLAN
+════════════════════════════════════════════════════════════════════════════════
+
+# Planning: In-Context Learning Label Bias
+
+## Motivation & Novelty Assessment
+
+### Why This Research Matters
+Few-shot prompting is the default way practitioners adapt LLMs to classification, and the demonstrations are often picked ad hoc. If superficial demonstration statistics (label counts, order, length) move predictions, a deployed classifier can quietly change behaviour depending on which examples were pasted into the prompt. Knowing how large each bias is, and whether it shrinks with scale, tells practitioners which properties of a demonstration set they actually need to control.
+
+### Gap in Existing Work
+(No literature review was pre-gathered for this workspace: papers/, datasets/ and code/ were missing. The background below comes from known work.) Zhao et al. (2021, *Calibrate Before Use*) documented majority-label, recency and common-token bias in GPT-3, mostly with small numbers of prompts on one model family, and proposed contextual calibration. Fei et al. (2023) added "domain-label bias" and domain-context calibration. Min et al. (2022) showed that label correctness matters less than format. Lu et al. (2022) showed that order sensitivity is large. Most of these studies vary one factor at a time on older GPT-3-era models. None (a) measure frequency, recency, position *and* length-label correlation side by side with the same protocol, (b) do so across a dense scale ladder (0.5B to 14B) of a single modern instruction-tuned family, or (c) report calibration and entropy for each bias type.
+
+### Our Novel Contribution
+A controlled, fully paired benchmark of four demonstration manipulations (frequency skew, recency, primacy/label-position, label-length correlation) against a clean baseline on 4 NLU tasks and 5 model sizes. The manipulation's target label is rotated through every label, so a model's intrinsic label prior cancels out and the "shift toward the target label" can be read directly. We report accuracy, calibration (ECE) and entropy.
+
+### Experiment Justification
+- Exp 1 (bias magnitude by type): estimates the shift toward the target label for each manipulation. This tests the claimed ordering skew > recency > length.
+- Exp 2 (scale ladder 0.5B→14B): tests "larger models correct skew but amplify recency" and "length bias is hard to overcome with scale".
+- Exp 3 (calibration/entropy): tests "ECE increases monotonically with all bias types".
+- Exp 4 (length interaction): checks whether the length manipulation teaches a length→label *rule* (long test inputs pushed toward T) rather than a blanket prior shift.
+
+## Research Question
+How much does each type of spurious demonstration statistic shift an LLM's few-shot predictions toward the favoured label, and how does this depend on model scale? Types: label frequency, recency, label position (primacy), and label-length correlation.
+
+## Hypothesis Decomposition
+- H1: skew produces a 15–25 pp shift toward the majority label, the largest of all types.
+- H2: recency produces an 8–15 pp shift, second largest.
+- H3: length correlation produces a 5–10 pp shift that does not shrink with scale.
+- H4: the skew shift decreases with scale, and the recency shift increases with scale.
+- H5: ECE(cond) > ECE(clean) for every bias type.
+
+## Proposed Methodology
+### Approach
+- Models: local Qwen2.5-Instruct models at 0.5B, 1.5B, 3B, 7B and 14B, run in vLLM. No API keys are available on this host and the idea specifies local models. vLLM is used instead of Ollama because it gives exact label log-probs.
+- Prompts are raw completion-style text with a one-line task instruction and k=10 demonstrations.
+- Prediction is the argmax of the next-token distribution restricted to the label words and renormalised over them. This avoids parsing failures and gives probabilities for calibration.
+- Tasks:
+  - SST-2 (sentiment, 2-way)
+  - RTE (NLI, 2-way)
+  - AG News (topic, 4-way)
+  - MRPC (paraphrase, 2-way)
+- Each task has 200 gold-balanced test items from the validation/test split. Demos are drawn from the train split.
+
+### Conditions (k = 10, target label T rotated over all labels)
+| cond | label counts | order | lengths |
+|---|---|---|---|
+| clean | balanced (5/5; 3/3/2/2) | random | random |
+| skew | 8 T / 2 other | random | random |
+| recency | balanced | last 2 = T | random |
+| primacy (label-position) | balanced | first 2 = T | random |
+| length | balanced | random | T demos from longest third, others from shortest third |
+
+"Label-position correlation (label always near sentence start)" is interpreted at the *prompt* level: T demonstrations occupy the first positions (primacy). This is the counterpart of recency. The deviation is documented.
+
+There are 10,000 prompts per model (4 tasks × 200 items × |L| targets × 5 conditions). The same prompts are used for all models, so comparisons are paired.
+
+### Baselines
+The clean balanced demonstration set, with its own fresh sample per (item, T). The no-bias reference rates are P(pred=T | clean), which equals 1/|L| on average.
+
+### Evaluation Metrics
+- Target shift Δ = P(pred=T | cond) − P(pred=T | clean), in percentage points. This is the primary bias measure.
+- Accuracy and the accuracy drop relative to clean.
+- ECE (10 equal-width bins, max-prob confidence).
+- Mean predictive entropy (normalised by log|L|).
+- Mean probability mass on T (a soft version of Δ).
+- For the length condition: Δ on long test inputs (above the median) vs short ones.
+
+### Statistical Analysis Plan
+- 95% CIs come from a cluster bootstrap over test items (2,000 resamples).
+- Paired sign-flip permutation tests on the per-item Δ, with Holm correction across conditions × models.
+- Scale trend: OLS slope of Δ on log10(params), with a CI from bootstrapping over items.
+- Calibration: the ECE difference from clean, with a bootstrap CI.
+
+## Expected Outcomes
+H1 is supported if Δ_skew lies in [15, 25] and exceeds every other Δ. H4 is supported if the skew slope is negative and the recency slope is positive (CI excluding 0). H5 is supported if ECE(cond) − ECE(clean) > 0 for all conditions in most models.
+
+## Timeline
+- Setup and prompt building: 30 min.
+- Model runs: about 2–3 h, constrained by the shared GPUs.
+- Analysis: 45 min.
+- Report: 45 min.
+
+## Potential Challenges
+- Shared GPUs have only about 5 GB free on 3 of 4 cards. Mitigation: run 14B first on the free card, run small models on the slices, and use the AWQ fallback for 3B/7B if needed.
+- Ceiling effects on SST-2/AG News for large models would compress shifts. We report per-task results.
+- Lengths are confounded with content difficulty. We report the length interaction to tell a rule from a prior.
+
+## Success Criteria
+All 5 models are run on all conditions. Each hypothesis component is evaluated with CIs and an explicit supported/refuted verdict.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          LITERATURE REVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+No literature_review.md found
+
+════════════════════════════════════════════════════════════════════════════════
+                          PAPER REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+Generate a complete academic paper with the following structure:
+
+1. TITLE
+   - Clear, specific, informative
+   - Should convey main finding or contribution
+
+2. AUTHOR
+   - Use this exact author line in the \author{} block: NeuriCo
+
+3. ABSTRACT (150-250 words)
+   - Problem statement
+   - Approach
+   - Key results
+   - Significance
+
+4. INTRODUCTION
+   - Research problem and motivation
+   - Gap in existing work
+   - Our contribution (be specific)
+   - Paper organization
+
+5. RELATED WORK
+   - Organized by theme/approach
+   - Position our work relative to prior work
+   - Cite papers from literature review
+
+6. METHODOLOGY
+   - Clear description of approach
+   - Experimental setup
+   - Datasets used
+   - Evaluation metrics
+   - Baselines
+
+7. RESULTS
+   - Present results with tables and figures
+   - Statistical analysis
+   - Comparison to baselines
+   - Ablation studies (if applicable)
+
+8. DISCUSSION
+   - Interpretation of results
+   - Limitations
+   - Broader implications
+
+9. CONCLUSION
+   - Summary of contributions
+   - Key findings
+   - Future work
+
+10. REFERENCES
+   - BibTeX format
+   - All cited papers
+
+════════════════════════════════════════════════════════════════════════════════
+                          OUTPUT FORMAT
+════════════════════════════════════════════════════════════════════════════════
+
+Create a MODULAR LaTeX project with the following directory structure:
+
+paper_draft/
+├── main.tex              # Main file that imports all sections
+├── references.bib        # BibTeX references
+├── sections/
+│   ├── abstract.tex      # Abstract content
+│   ├── introduction.tex  # Introduction section
+│   ├── related_work.tex  # Related work section
+│   ├── methodology.tex   # Methodology section
+│   ├── results.tex       # Results section
+│   ├── discussion.tex    # Discussion section
+│   └── conclusion.tex    # Conclusion section
+├── figures/              # Directory for any generated figures
+├── tables/               # Directory for complex standalone tables
+└── appendix/             # Directory for appendix sections (if needed)
+
+INSTRUCTIONS:
+1. First, create the directory structure above (mkdir -p paper_draft/sections paper_draft/figures paper_draft/tables paper_draft/appendix)
+2. Write main.tex using the EXACT preamble for NEURIPS:
+
+   \documentclass{article}
+   \usepackage[final]{neurips_2025}  % NEURIPS style (neurips_2025.sty is in paper_draft/)
+   \usepackage[hidelinks]{hyperref}  % REQUIRED: clickable links
+   \usepackage{booktabs}  % REQUIRED: professional tables
+   \usepackage{graphicx}
+   \usepackage{amsmath,amssymb}
+
+   % Import command files
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+   % Use this bibliography style:
+   \bibliographystyle{plainnat}
+
+   \author{NeuriCo}
+
+   - Use \input{sections/...} to include each section
+   - Use \bibliography{references} for references
+3. Write each section file with COMPLETE content (no placeholders)
+4. Each section file should include its \section{} command
+5. Write references.bib with all citations in BibTeX format
+6. After writing all files, compile the paper:
+   cd paper_draft && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+This modular structure allows humans to easily:
+- Edit individual sections without navigating a large file
+- Track changes per section
+- Reuse sections across different paper versions
+
+════════════════════════════════════════════════════════════════════════════════
+                          QUALITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+- Academic tone throughout
+- All claims must be supported by data from the experiment report
+- Proper citations using \cite{} commands
+- Clear figures and tables with proper captions
+- NO placeholder text - every section must have real content
+- The paper MUST compile without errors
+- If compilation fails, debug and fix the LaTeX errors
+
+════════════════════════════════════════════════════════════════════════════════
+                          LAB WRITING STYLE
+════════════════════════════════════════════════════════════════════════════════
+
+Follow these lab-specific conventions to match our paper style:
+
+1. LANGUAGE STYLE:
+   - Use active voice: "We propose", "We examine", "We focus on"
+   - Be direct and confident: "Our main question is...", "We hypothesize that..."
+   - State things clearly and simply - prefer plain language over jargon
+   - Use bold questions as paragraph organizers: {\bf what is X?}
+   - Include specific quantitative claims: "8.97% over baseline"
+   - Avoid fancy wording: "utilize" → "use", "facilitate" → "help"
+
+2. INTRODUCTION STRUCTURE:
+   - Engaging hook (get to the point quickly)
+   - Problem importance
+   - Gap identification
+   - Your approach with method figure reference
+   - Quantitative preview of results
+   - Contribution bullets (3-4 items, action verbs)
+
+3. CONTRIBUTION LISTS:
+   \begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+       \item We propose...
+       \item We conduct...
+       \item We complement...
+   \end{itemize}
+
+4. MODULAR COMMANDS STRUCTURE:
+   Command templates are pre-copied to paper_draft/commands/:
+   - math.tex: Math notation macros
+   - general.tex: Formatting macros
+   - macros.tex: Project-specific term definitions (customize this for your paper)
+
+   In main.tex, include:
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+5. REFERENCE CONVENTIONS:
+   Use reference macros from math.tex:
+   - \figref{fig:name} for "figure 1" (lowercase, in-sentence)
+   - \Figref{fig:name} for "Figure 1" (capitalized, start of sentence)
+   - \secref{sec:name} for "section 2"
+
+6. TEXT FORMATTING:
+   - Use \para{Header text} for bold paragraph headers
+   - Define method/dataset names with \textsc and \xspace:
+     \newcommand{\methodname}{\textsc{MethodName}\xspace}
+
+7. TABLE FORMATTING:
+   - Use booktabs package (no vertical lines)
+   - Use \resizebox{\textwidth}{!}{...} for wide tables
+   - Use @{} to remove padding at table edges
+   - Use \cmidrule(lr){x-y} for sub-headers
+   - Use \textsc{} for dataset/method names in headers
+   - Bold best results with {\bf ...}
+
+8. FIGURE FORMATTING:
+   - Use 0.32\textwidth for 3-column subfigures
+   - Use 0.95\linewidth for full-width figures
+   - Use \input{figures/legend} for shared legends
+   - Write self-contained captions explaining key observations
+
+9. RESULTS PRESENTATION:
+   - Define \increase and \decrease for colored arrows (green up, red down)
+   - Bold best results in tables
+   - Report confidence intervals when available
+
+10. ALGORITHM STYLING:
+    - Use algpseudocode with [noend]
+    - Use \triangleright for comments
+
+11. HYPERLINKS (REQUIRED):
+    - Always use \usepackage[hidelinks]{hyperref} or with colored links
+    - All citations, section refs, figure refs, table refs must be clickable
+    - This is essential for reader navigation
+
+════════════════════════════════════════════════════════════════════════════════
+                          WORKFLOW: REVIEW AND REFLECT
+════════════════════════════════════════════════════════════════════════════════
+
+Before calling finish, you MUST complete these review steps:
+
+1. REVIEW RESOURCES (at the start):
+   - Read .claude/skills/paper-writer/SKILL.md for detailed guidance
+   - Study templates/paper_writing/lab_style_guide.md for style conventions
+   - Browse paper_examples/ for formatting and language patterns
+
+2. SELF-REFLECTION (before finishing):
+   After writing all sections, review your work against these criteria:
+
+   LANGUAGE CHECK:
+   - [ ] Is the writing clear and jargon-free?
+   - [ ] Are claims specific with quantitative support?
+   - [ ] Is active voice used throughout?
+
+   FORMATTING CHECK:
+   - [ ] Does main.tex include \input{commands/math}, \input{commands/general}, \input{commands/macros}?
+   - [ ] Is hyperref package included for clickable references?
+   - [ ] Do tables use booktabs (no vertical lines)?
+   - [ ] Are best results bolded in tables?
+   - [ ] Are figures/tables properly captioned?
+
+   STRUCTURE CHECK:
+   - [ ] Does introduction follow: hook → importance → gap → approach → preview → contributions?
+   - [ ] Are contribution bullets specific with action verbs?
+   - [ ] Does the paper compile without errors?
+
+3. FIX ISSUES:
+   - Address any issues found in the self-reflection
+   - Re-compile and verify the PDF looks correct
+
+Only after completing this review should you consider the paper finished.

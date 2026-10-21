@@ -1,0 +1,22 @@
+\begin{table}[t]
+    \centering
+    \small
+    \begin{tabular}{@{}lccccccc@{}}
+        \toprule
+        & \multicolumn{5}{c}{ECE} & \multicolumn{2}{c}{Norm.\ entropy} \\
+        \cmidrule(lr){2-6} \cmidrule(lr){7-8}
+        \textbf{Model} & \clean & \skewc & \recency & \primacy & \lengthc & \clean & \skewc \\
+        \midrule
+        Qwen2.5-0.5B      & .071 & .062 & .058 & .072 & .062 & .575 & .569 \\
+        Qwen2.5-1.5B      & .049 & .070 & .048 & .060 & .041 & .427 & .433 \\
+        Qwen2.5-3B        & .121 & .127 & .124 & .123 & .114 & .170 & .185 \\
+        Qwen2.5-7B-AWQ    & .111 & .118 & .121 & .123$^{\dagger}$ & .117 & .105 & .118 \\
+        Qwen2.5-14B       & .097 & .092 & .101 & .097 & .089 & .099 & .102 \\
+        Qwen2.5-1.5B-base & .058 & .067 & .062 & .061 & .063 & .540 & .537 \\
+        Llama-3.2-1B      & .035 & .051 & .053 & .033 & .045 & .651 & .645 \\
+        Llama-3.1-8B-AWQ  & .053 & .055 & .056 & .058 & .055 & .337 & .357 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Expected calibration error (equal-task mean) and normalised predictive entropy. $\Delta$ECE against \clean lies between $-1.3$ and $+2.2$ points. 9 of 32 differences are negative, and only one paired bootstrap CI excludes zero ($^{\dagger}$: +1.2 [+0.02, +2.3], before correcting for 32 comparisons). Differences between models (larger Qwen models are overconfident even on \clean prompts) are much larger than differences between conditions.}
+    \label{tab:calibration}
+\end{table}

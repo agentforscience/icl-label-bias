@@ -1,0 +1,6 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We measured how four spurious statistics in few-shot demonstrations (frequency skew, recency, primacy and label--length correlation) shift the predictions of eight local LLMs, using 80,000 paired, label-rotated prompts. All four biases are far smaller than hypothesised. Frequency skew is the only consistently harmful one. It matters mainly for small models, base models and ambiguous tasks, and it fades with scale at 3.7 points per tenfold increase in parameters. Recency, primacy and length produce effects of at most 4 points, including an unexpected anti-recency pattern in models of 3B and above. Calibration is essentially unaffected. The key takeaway is that, for current instruction-tuned models of 3B and above, ordinary variation between balanced demonstration sets (4--8\% of predictions flip) outweighs any systematic label bias we found.
+
+Future work should extend the study to 32B--70B models and chat-formatted prompts. It should also use new or synthetic tasks with randomised label words, to remove prior knowledge and contamination. Varying run length and label alternation would test the alternation-expectation account of anti-recency. Finally, it remains open whether contextual~\citep{zhao2021calibrate} or domain-context~\citep{fei2023mitigating} calibration still helps when the biases are this small.

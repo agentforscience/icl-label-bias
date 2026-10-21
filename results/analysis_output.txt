@@ -1,0 +1,166 @@
+models: ['Qwen2.5-0.5B', 'Qwen2.5-1.5B', 'Qwen2.5-3B', 'Qwen2.5-7B-AWQ', 'Qwen2.5-14B', 'Qwen2.5-1.5B-base', 'Llama-3.2-1B', 'Llama-3.1-8B-AWQ'] rows: 80000
+
+=== Target shift Δ (pp) toward manipulated label, equal-task mean ===
+            model    cond  delta_pp    lo    hi  soft_delta_pp  dacc_pp  p_holm  delta_sst2  delta_rte  delta_agnews  delta_mrpc
+     Qwen2.5-0.5B    skew      4.34  2.69  5.91           2.22     0.97    0.00       -1.25      -3.25         -0.12       22.00
+     Qwen2.5-0.5B recency      1.78  0.19  3.47           1.13     1.00    0.62        2.25       3.75         -0.38        1.50
+     Qwen2.5-0.5B primacy     -3.12 -4.81 -1.47          -2.25     0.88    0.01       -3.00      -4.75         -3.50       -1.25
+     Qwen2.5-0.5B  length     -0.94 -2.62  0.72          -0.31     0.53    1.00       -2.00       0.50          1.25       -3.50
+     Qwen2.5-1.5B    skew      4.88  3.41  6.31           2.48    -2.78    0.00       -1.50       0.00          3.75       17.25
+     Qwen2.5-1.5B recency     -1.22 -2.50 -0.00          -0.72     0.00    1.00       -0.50       0.50         -1.62       -3.25
+     Qwen2.5-1.5B primacy     -2.53 -3.78 -1.28          -2.44    -0.91    0.01        0.00      -2.50         -1.62       -6.00
+     Qwen2.5-1.5B  length      0.66 -0.72  2.03           0.76     0.03    1.00       -1.25       0.50         -0.88        4.25
+       Qwen2.5-3B    skew      2.31  1.06  3.56           2.05    -1.72    0.01        3.00      -0.50          1.75        5.00
+       Qwen2.5-3B recency     -3.59 -4.75 -2.44          -3.78    -0.47    0.00        0.25      -1.75         -2.38      -10.50
+       Qwen2.5-3B primacy      3.84  2.69  5.12           3.39    -0.94    0.00        3.00       0.75          0.88       10.75
+       Qwen2.5-3B  length      0.19 -1.03  1.31           0.19     0.09    1.00       -0.50      -0.50         -0.25        2.00
+   Qwen2.5-7B-AWQ    skew      1.28  0.19  2.47           1.29    -1.09    0.54        1.00      -1.75          0.88        5.00
+   Qwen2.5-7B-AWQ recency     -1.72 -2.75 -0.62          -1.91    -0.94    0.05        0.00      -1.75         -0.62       -4.50
+   Qwen2.5-7B-AWQ primacy      1.00 -0.09  2.12           1.04    -1.09    1.00        0.50       1.75         -0.25        2.00
+   Qwen2.5-7B-AWQ  length      0.59 -0.41  1.56           0.43    -0.38    1.00        0.00      -2.00          0.62        3.75
+      Qwen2.5-14B    skew     -0.62 -1.69  0.34          -0.46     0.31    1.00        0.00      -0.50          0.75       -2.75
+      Qwen2.5-14B recency     -2.06 -3.09 -1.06          -2.27    -0.25    0.01        0.00      -3.00         -0.75       -4.50
+      Qwen2.5-14B primacy      1.47  0.59  2.41           1.52     0.22    0.04        1.25       0.50          1.38        2.75
+      Qwen2.5-14B  length      0.69 -0.19  1.59           0.43     1.03    1.00        0.25      -0.75          0.50        2.75
+Qwen2.5-1.5B-base    skew      8.94  7.56 10.34           6.83    -1.56    0.00       -1.50       7.75          9.75       19.75
+Qwen2.5-1.5B-base recency      1.62  0.50  2.72           1.80    -0.34    0.13       -0.25       6.50          1.75       -1.50
+Qwen2.5-1.5B-base primacy     -0.31 -1.53  0.84          -0.94    -0.97    1.00       -0.25       0.00         -1.00        0.00
+Qwen2.5-1.5B-base  length      0.53 -0.53  1.62           0.66    -0.19    1.00       -1.00       2.25          1.38       -0.50
+     Llama-3.2-1B    skew     16.94 14.94 18.97           6.99    -2.62    0.00        3.75      22.25          0.00       41.75
+     Llama-3.2-1B recency     -1.78 -3.81  0.38           0.21    -1.47    1.00       -1.50     -11.75          1.62        4.50
+     Llama-3.2-1B primacy      0.22 -1.91  2.28          -0.88     1.66    1.00        0.25      -3.00         -2.88        6.50
+     Llama-3.2-1B  length     -3.09 -5.31 -1.06          -0.49    -0.75    0.13       -1.75      -7.75         -0.38       -2.50
+ Llama-3.1-8B-AWQ    skew      0.59 -0.78  1.84          -0.09    -1.12    1.00       -0.75       2.50         -5.12        5.75
+ Llama-3.1-8B-AWQ recency     -2.66 -4.00 -1.34          -2.10    -1.16    0.01        0.00      -2.75         -1.38       -6.50
+ Llama-3.1-8B-AWQ primacy      0.38 -0.88  1.66           0.09    -0.09    1.00        0.25       0.00          0.50        0.75
+ Llama-3.1-8B-AWQ  length     -0.34 -1.66  0.97          -0.30    -0.75    1.00        0.00      -0.50          0.12       -1.00
+
+Δ pivot (pp):
+ cond               length  primacy  recency  skew
+model                                            
+Qwen2.5-0.5B         -0.9     -3.1      1.8   4.3
+Qwen2.5-1.5B          0.7     -2.5     -1.2   4.9
+Qwen2.5-3B            0.2      3.8     -3.6   2.3
+Qwen2.5-7B-AWQ        0.6      1.0     -1.7   1.3
+Qwen2.5-14B           0.7      1.5     -2.1  -0.6
+Qwen2.5-1.5B-base     0.5     -0.3      1.6   8.9
+Llama-3.2-1B         -3.1      0.2     -1.8  16.9
+Llama-3.1-8B-AWQ     -0.3      0.4     -2.7   0.6
+
+Accuracy split by gold==T:
+ cond               clean          skew        recency        length       
+is_T               False  True   False  True    False  True   False  True 
+model                                                                     
+Llama-3.1-8B-AWQ   0.841  0.848  0.837  0.824   0.857  0.804  0.836  0.838
+Llama-3.2-1B       0.733  0.720  0.588  0.862   0.732  0.690  0.738  0.685
+Qwen2.5-0.5B       0.705  0.725  0.678  0.782   0.711  0.751  0.714  0.722
+Qwen2.5-1.5B       0.805  0.821  0.742  0.842   0.821  0.804  0.802  0.828
+Qwen2.5-1.5B-base  0.798  0.792  0.701  0.884   0.781  0.811  0.782  0.804
+Qwen2.5-14B        0.872  0.871  0.877  0.869   0.883  0.848  0.878  0.889
+Qwen2.5-3B         0.821  0.834  0.794  0.842   0.848  0.789  0.819  0.840
+Qwen2.5-7B-AWQ     0.852  0.856  0.835  0.861   0.861  0.829  0.843  0.862
+/data/summereunann/neurico-workspaces/icl_label_bias_20261020_001001_e5f6g7h8/src/analyze.py:155: Pandas4Warning: Starting with pandas version 4.0 all arguments of mean will be keyword-only.
+  flips["mean"] = flips.mean(1)
+
+Flip rate (%) between two independent balanced demo sets:
+ task               agnews  mrpc   rte  sst2  mean
+model                                            
+Qwen2.5-0.5B         12.0  23.0  13.0   4.5  13.1
+Qwen2.5-1.5B          7.5  23.5   4.0   2.5   9.4
+Qwen2.5-3B            8.5  11.5   3.0   1.5   6.1
+Qwen2.5-7B-AWQ        4.5   8.5   4.5   2.0   4.9
+Qwen2.5-14B           4.0   9.0   2.0   2.0   4.2
+Qwen2.5-1.5B-base     6.5   6.0  11.0   1.5   6.2
+Llama-3.2-1B         20.5  41.5  23.5   5.5  22.8
+Llama-3.1-8B-AWQ      5.5  14.5   9.5   1.5   7.8
+
+Scale slopes (Qwen, pp per 10x params):
+       cond  slope_pp_per_decade    lo    hi  spearman_rho
+0     skew                -3.67 -4.81 -2.37          -0.9
+1  recency                -2.42 -3.64 -1.19          -0.7
+2  primacy                 3.56  2.38  4.69           0.7
+3   length                 0.95 -0.21  2.16           0.7
+
+Calibration (equal-task mean):
+ cond               clean  length  primacy  recency   skew
+model                                                    
+Qwen2.5-0.5B       0.071   0.062    0.072    0.058  0.062
+Qwen2.5-1.5B       0.049   0.041    0.060    0.048  0.070
+Qwen2.5-3B         0.121   0.114    0.123    0.124  0.127
+Qwen2.5-7B-AWQ     0.111   0.117    0.123    0.121  0.118
+Qwen2.5-14B        0.097   0.089    0.097    0.101  0.092
+Qwen2.5-1.5B-base  0.058   0.063    0.061    0.062  0.067
+Llama-3.2-1B       0.035   0.045    0.033    0.053  0.051
+Llama-3.1-8B-AWQ   0.053   0.054    0.058    0.056  0.055
+
+ΔECE vs clean with CI:
+             model    cond   dECE     lo    hi
+     Qwen2.5-0.5B    skew -0.009 -0.022 0.012
+     Qwen2.5-0.5B recency -0.013 -0.029 0.006
+     Qwen2.5-0.5B primacy  0.001 -0.015 0.019
+     Qwen2.5-0.5B  length -0.009 -0.024 0.013
+     Qwen2.5-1.5B    skew  0.022 -0.001 0.033
+     Qwen2.5-1.5B recency -0.000 -0.017 0.013
+     Qwen2.5-1.5B primacy  0.011 -0.008 0.023
+     Qwen2.5-1.5B  length -0.007 -0.020 0.010
+       Qwen2.5-3B    skew  0.006 -0.006 0.018
+       Qwen2.5-3B recency  0.003 -0.009 0.014
+       Qwen2.5-3B primacy  0.002 -0.009 0.014
+       Qwen2.5-3B  length -0.007 -0.019 0.005
+   Qwen2.5-7B-AWQ    skew  0.008 -0.006 0.016
+   Qwen2.5-7B-AWQ recency  0.011 -0.002 0.020
+   Qwen2.5-7B-AWQ primacy  0.012  0.000 0.023
+   Qwen2.5-7B-AWQ  length  0.007 -0.007 0.015
+      Qwen2.5-14B    skew -0.005 -0.015 0.005
+      Qwen2.5-14B recency  0.004 -0.007 0.014
+      Qwen2.5-14B primacy  0.000 -0.009 0.010
+      Qwen2.5-14B  length -0.008 -0.019 0.003
+Qwen2.5-1.5B-base    skew  0.010 -0.009 0.019
+Qwen2.5-1.5B-base recency  0.004 -0.010 0.013
+Qwen2.5-1.5B-base primacy  0.003 -0.010 0.016
+Qwen2.5-1.5B-base  length  0.005 -0.010 0.016
+     Llama-3.2-1B    skew  0.017 -0.004 0.035
+     Llama-3.2-1B recency  0.018 -0.011 0.033
+     Llama-3.2-1B primacy -0.002 -0.020 0.018
+     Llama-3.2-1B  length  0.010 -0.015 0.025
+ Llama-3.1-8B-AWQ    skew  0.002 -0.013 0.017
+ Llama-3.1-8B-AWQ recency  0.003 -0.014 0.015
+ Llama-3.1-8B-AWQ primacy  0.005 -0.010 0.017
+ Llama-3.1-8B-AWQ  length  0.001 -0.014 0.015
+
+Entropy:
+ cond               clean  length  primacy  recency   skew
+model                                                    
+Qwen2.5-0.5B       0.575   0.577    0.572    0.576  0.569
+Qwen2.5-1.5B       0.427   0.427    0.420    0.413  0.433
+Qwen2.5-3B         0.170   0.168    0.171    0.165  0.185
+Qwen2.5-7B-AWQ     0.105   0.108    0.107    0.110  0.118
+Qwen2.5-14B        0.099   0.099    0.098    0.097  0.102
+Qwen2.5-1.5B-base  0.540   0.541    0.538    0.531  0.537
+Llama-3.2-1B       0.651   0.655    0.651    0.647  0.645
+Llama-3.1-8B-AWQ   0.337   0.344    0.343    0.346  0.357
+
+Accuracy:
+ cond               clean  length  primacy  recency   skew
+model                                                    
+Qwen2.5-0.5B       0.717   0.722    0.726    0.727  0.727
+Qwen2.5-1.5B       0.818   0.819    0.809    0.818  0.791
+Qwen2.5-3B         0.832   0.833    0.823    0.828  0.815
+Qwen2.5-7B-AWQ     0.858   0.854    0.847    0.848  0.847
+Qwen2.5-14B        0.876   0.887    0.878    0.874  0.879
+Qwen2.5-1.5B-base  0.793   0.792    0.784    0.790  0.778
+Llama-3.2-1B       0.722   0.714    0.738    0.707  0.695
+Llama-3.1-8B-AWQ   0.845   0.837    0.844    0.833  0.834
+
+Length-condition Δ by test length (pp):
+                    short_test  long_test  long_minus_short    lo    hi
+model                                                                 
+Qwen2.5-0.5B            -1.14       0.21              1.35 -2.23  4.24
+Qwen2.5-1.5B             0.00       0.74              0.74 -1.97  3.53
+Qwen2.5-3B               0.38      -0.21             -0.59 -2.75  2.30
+Qwen2.5-7B-AWQ           0.10       1.16              1.06 -1.16  2.89
+Qwen2.5-14B              0.57       0.74              0.17 -1.80  1.87
+Qwen2.5-1.5B-base       -0.10       1.58              1.67 -0.48  3.80
+Llama-3.2-1B            -3.43      -1.58              1.85 -2.70  5.58
+Llama-3.1-8B-AWQ        -1.14       0.74              1.88 -0.34  4.67
+figures written
